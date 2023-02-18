@@ -4,6 +4,7 @@
 
 	<resultMap id="manage" type="egovframework.example.manage.service.ManageVO">
 		<result property="rownum" column="rownum"/>
+		<result property="no" column="no"/>
 		<result property="role_id" column="role_id"/>
 		<result property="store_id" column="store_id"/>
 		<result property="high_store_id" column="high_store_id"/>
@@ -27,6 +28,7 @@
 		<result property="bank_code" column="bank_code"/>
 		<result property="bank_nm" column="bank_nm"/>
 		<result property="account_num" column="account_num"/>
+		<result property="accounter" column="accounter"/>
 		<result property="state" column="state"/>
 		<result property="hompage" column="hompage"/>
 		<result property="zip_code" column="zip_code"/>
@@ -41,23 +43,37 @@
 		<result property="person_email2" column="person_email2"/>
 		<result property="person_nm3" column="person_nm3"/>
 		<result property="person_phone3" column="person_phone3"/>
-		<result property="person_email3" column="person_email3"/>
+		<result property="person_email3" column="person_email3"/> 
 		<result property="tax" column="tax"/>
 		<result property="commission" column="commission"/>
+		<result property="itg_limitset" column="itg_limitset"/>
+		<result property="main_commission" column="main_commission"/>
 		<result property="period" column="period"/>
+		<result property="deposit" column="deposit"/>
 		<result property="settlement_type" column="settlement_type"/>
+		<result property="file_no" column="file_no"/>
 		<result property="created_id" column="created_id"/>
 		<result property="created_datetime" column="created_datetime"/>
 		<result property="updated_id" column="updated_id"/>
 		<result property="updated_datetime" column="updated_datetime"/>
+		<result property="credit_card_k" column="credit_card_k"/>
+		<result property="credit_card" column="credit_card"/>
+		<result property="terminal" column="terminal"/>
+		<result property="virtual_account" column="virtual_account"/>
+		<result property="gift_voucher" column="gift_voucher"/>
+		<result property="smart_gift_voucher" column="smart_gift_voucher"/>
+		<result property="book_gift_voucher" column="book_gift_voucher"/>
+		<result property="account_transfer" column="account_transfer"/>
 	</resultMap>
 	
 	<select id="selectManageList" parameterType="searchManageVO" resultMap="manage">
 				   select a.* 
 		             from (
 						  select @ROWNUM:=@ROWNUM+1 AS rownum,
+						         a.no,
 						  		 a.store_id,
 								 a.high_store_id,
+								 a.role_id,
 								 a.passwd,
 								 a.business_nm,
 								 a.ceo,
@@ -80,7 +96,7 @@
 								 a.address,
 								 a.detail_address,
 								 a.terminal_id,
-								 replace(a.person_nm1, substr(a.person_nm1, 2, 1), '*') person_nm1,
+								 replace(a.person_nm1, substr(a.person_nm1, 2, 1), '*') person_nm1,	
 								 concat(substring(a.person_phone1, 1, 9), '****') as person_phone1,
 								 concat(substring(a.person_email1, 1, length(substring_index(a.person_email1, '@', 1))-3), '***@', substring_index(a.person_email1, '@', -1)) as person_email1,
 								 a.person_nm2,
@@ -90,53 +106,161 @@
 								 a.person_phone3,
 								 a.person_email3,
 								 a.commission,
+								 a.itg_limitset,
+								 (ifnull(a.amount1,0)+ifnull(a.amount2,0)+ifnull(a.amount3,0)-ifnull(a.cancel_amount,0)) as use_amount,
+								 truncate((select max(commission) from tb_store a inner join tb_store_role b on a.store_id = b.store_id and b.role_id = '1001') - a.commission, 2) as main_commission,
 								 a.period,
-								 a.tax,									 
+								 a.tax,	
+								 a.deposit,								 
 								 a.created_id,   
 								 a.created_datetime,    
 								 a.updated_id,   
-						 	 	 a.updated_datetime  
+						 	 	 a.updated_datetime,
+						 	 	 a.credit_card_k,
+								 a.credit_card,
+								 a.terminal,
+								 a.virtual_account,
+								 a.gift_voucher,
+								 a.smart_gift_voucher,
+								 a.book_gift_voucher,
+								 a.account_transfer
 							from (
-								 select a.store_id,
+								 select a.no,
+								        a.store_id,
 										a.high_store_id,
+										b.role_id,
 										a.passwd,
-										a.business_nm,
-										a.ceo,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.business_nm), SHA2('shxdb@123',256)) AS CHAR), a.business_nm) AS business_nm,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.ceo), SHA2('shxdb@123',256)) AS CHAR), a.ceo) AS ceo,
 										a.ceo_birth,
-										a.corp_regist_num,
-										a.corp_regist_num2,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.corp_regist_num), SHA2('shxdb@123',256)) USING UTF8), a.corp_regist_num) AS corp_regist_num,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.corp_regist_num2), SHA2('shxdb@123',256)) USING UTF8), a.corp_regist_num2) AS corp_regist_num2,
 										a.corp_type,
 										a.business_cond,
 										a.industry_type,
-										a.tel,
-										a.fax,
-										a.phone_num,
-										a.email,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.tel), SHA2('shxdb@123',256)) USING UTF8), a.tel) AS tel,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.fax), SHA2('shxdb@123',256)) USING UTF8), a.fax) AS fax,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.phone_num), SHA2('shxdb@123',256)) USING UTF8), a.phone_num) AS phone_num,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.email), SHA2('shxdb@123',256)) USING UTF8), a.email) AS email,
 										a.contract_date,
 										a.bank_code,
-										a.account_num,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.account_num), SHA2('shxdb@123',256)) USING UTF8), a.account_num) AS account_num,
 										a.state,
 										a.hompage,
 										a.zip_code,
 										a.address,
 										a.detail_address,
 										a.terminal_id,
-										a.person_nm1,
-										a.person_phone1,
-										a.person_email1,
-										a.person_nm2,
-										a.person_phone2,
-										a.person_email2,
-										a.person_nm3,
-										a.person_phone3,
-										a.person_email3,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm1), SHA2('shxdb@123',256)) AS CHAR), a.person_nm1) AS person_nm1,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone1), SHA2('shxdb@123',256)) USING UTF8), a.person_phone1) AS person_phone1,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email1), SHA2('shxdb@123',256)) USING UTF8), a.person_email1) AS person_email1,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm2), SHA2('shxdb@123',256)) AS CHAR), a.person_nm2) AS person_nm2,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone2), SHA2('shxdb@123',256)) USING UTF8), a.person_phone2) AS person_phone2,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email2), SHA2('shxdb@123',256)) USING UTF8), a.person_email2) AS person_email2,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm3), SHA2('shxdb@123',256)) AS CHAR), a.person_nm3) AS person_nm3,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone3), SHA2('shxdb@123',256)) USING UTF8), a.person_phone3) AS person_phone3,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email3), SHA2('shxdb@123',256)) USING UTF8), a.person_email3) AS person_email3,
 										a.commission,
+										a.itg_limitset,
+										(
+											select 
+												sum(a.amount) 
+											from tb_card_auth a
+											inner join tb_store b
+												on a.cpid = b.cpid
+											inner join tb_store_role c
+												on b.store_id = c.store_id
+												and c.role_id='1004'
+											inner join tb_store d
+												on b.high_store_id =d.store_id
+											inner join tb_store_role e
+												on d.store_id = e.store_id 	
+												and e.role_id = '1003'
+											inner join tb_store f
+												on d.high_store_id =f.store_id
+											inner join tb_store_role g
+												on f.store_id = g.store_id 
+												and g.role_id = '1002'
+											where f.store_id = a.store_id
+										) as amount1,
+										(
+											select 
+												sum(a.amount) 
+											from tb_card_auth2 a
+											inner join tb_store b
+												on a.cpid = b.cpid
+											inner join tb_store_role c
+												on b.store_id = c.store_id
+												and c.role_id='1004'
+											inner join tb_store d
+												on b.high_store_id =d.store_id
+											inner join tb_store_role e
+												on d.store_id = e.store_id 	
+												and e.role_id = '1003'
+											inner join tb_store f
+												on d.high_store_id =f.store_id
+											inner join tb_store_role g
+												on f.store_id = g.store_id 
+												and g.role_id = '1002'
+											where f.store_id = a.store_id
+										) as amount2,
+										(
+											select 
+												sum(a.amount) 
+											from tb_pay_notice a
+											inner join tb_store b
+												on a.cpid = b.cpid
+											inner join tb_store_role c
+												on b.store_id = c.store_id
+												and c.role_id='1004'
+											inner join tb_store d
+												on b.high_store_id =d.store_id
+											inner join tb_store_role e
+												on d.store_id = e.store_id 	
+												and e.role_id = '1003'
+											inner join tb_store f
+												on d.high_store_id =f.store_id
+											inner join tb_store_role g
+												on f.store_id = g.store_id 
+												and g.role_id = '1002'
+											where f.store_id = a.store_id
+										) as amount3,
+										(
+											select 
+												sum(a.amount) 
+											from tb_card_cancel a
+											inner join tb_store b
+												on a.cpid = b.cpid
+											inner join tb_store_role c
+												on b.store_id = c.store_id
+												and c.role_id='1004'
+											inner join tb_store d
+												on b.high_store_id =d.store_id
+											inner join tb_store_role e
+												on d.store_id = e.store_id 	
+												and e.role_id = '1003'
+											inner join tb_store f
+												on d.high_store_id =f.store_id
+											inner join tb_store_role g
+												on f.store_id = g.store_id 
+												and g.role_id = '1002'
+											where f.store_id = a.store_id
+										) as cancel_amount,
 										a.period,
 										a.tax,											
+										a.deposit,											
 										a.created_id,   
 										date_format(a.created_datetime, '%Y.%m.%d') created_datetime,    
 										a.updated_id,   
-										a.updated_datetime    
+										a.updated_datetime,
+										c.credit_card_k,
+										c.credit_card,
+										c.terminal,
+										c.virtual_account,
+										c.gift_voucher,
+										c.smart_gift_voucher,
+										c.book_gift_voucher,
+										c.account_transfer
 								   from tb_store a
 								  inner join tb_store_role b
 									 on a.store_id = b.store_id
@@ -144,7 +268,6 @@
 							  	    <if test="start_datetime != null and start_datetime != '' and end_datetime != null and end_datetime != ''">
 									and date(a.created_datetime) BETWEEN #{start_datetime} AND #{end_datetime}
 									</if>
-									
 							   	    <if test="business_nm != null and business_nm != ''">
 									and a.business_nm like concat('%', #{business_nm}, '%')
 									</if>
@@ -218,8 +341,14 @@
 					                <foreach collection="list" item="item" index="index" separator="," open="(" close=")">
 					                    #{item}
 					                </foreach>									
-									</if>					
-								   order by case when #{order_no} = '1' then (	
+									</if>	
+								left join tb_store_commission c
+								  on c.store_id = b.store_id and c.active = 1
+								  <if test="order_no == null and order_no == ''">
+								  order by created_datetime asc
+								  </if>
+								  <if test="order_no != null and order_no != ''">
+								   order by  case when #{order_no} = '1' then (	
 												case #{order_id} when 'store_id' then a.store_id 
 															    when 'business_nm' then a.business_nm 
                                                                 when 'created_datetime' then a.created_datetime 
@@ -246,10 +375,12 @@
                                                                 when 'state' then a.state
                                                                 when 'tax' then a.tax
 														    end 
-												)END DESC					                                 
+												)END DESC	
+								 </if>			                                 
 		                         )a
 				           where (SELECT @ROWNUM:=0)=0        	
 		                  )a
+		            order by a.rownum desc
 		    	    LIMIT #{recordCountPerPage} OFFSET #{firstIndex}	        
 	</select>
 	
@@ -416,7 +547,7 @@
 						  a.address,
 						  a.detail_address,
 						  a.terminal_id,
-					 	  replace(a.person_nm1, substr(a.person_nm1, 2, 1), '*') person_nm1,
+						  replace(a.person_nm1, substr(a.person_nm1, 2, 1), '*') person_nm1,				 	  
 						  concat(substring(a.person_phone1, 1, 9), '****') as person_phone1,
 						  concat(substring(a.person_email1, 1, length(substring_index(a.person_email1, '@', 1))-3), '***@', substring_index(a.person_email1, '@', -1)) as person_email1,						  
 						  a.person_nm2,
@@ -426,12 +557,23 @@
 						  a.person_phone3,
 						  a.person_email3,
 						  a.commission,
+						  a.itg_limitset,
+						  a.use_amount,
 						  a.period,
-						  a.tax,							  
+						  a.tax,
+						  a.deposit,							  
 					 	  a.created_id,   
 						  a.created_datetime,    
 						  a.updated_id,   
-						  a.updated_datetime  
+						  a.updated_datetime,
+						  a.credit_card_k,
+						  a.credit_card,
+						  a.terminal,
+						  a.virtual_account,
+						  a.gift_voucher,
+						  a.smart_gift_voucher,
+						  a.book_gift_voucher,
+						  a.account_transfer
 		             from (
 						  select a.store_id,
 								 a.high_store_id,
@@ -468,53 +610,130 @@
 								 a.person_phone3,
 								 a.person_email3,
 								 a.commission,
+								 a.itg_limitset,
+								 (ifnull(a.amount1,0)+ifnull(a.amount2,0)+ifnull(a.amount3,0)-ifnull(a.cancel_amount,0)) as use_amount,
 								 a.period,
-								 a.tax,									 
+								 a.tax,	
+								 a.deposit,									 
 								 a.created_id,   
 								 a.created_datetime,    
 								 a.updated_id,   
-						 	 	 a.updated_datetime  
+						 	 	 a.updated_datetime,
+						 	 	 d.credit_card_k,
+								 d.credit_card,
+								 d.terminal,
+								 d.virtual_account,
+								 d.gift_voucher,
+								 d.smart_gift_voucher,
+								 d.book_gift_voucher,
+								 d.account_transfer
 							from (
 								 select a.store_id,
 										a.high_store_id,
 										a.passwd,
-										a.business_nm,
-										a.ceo,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.business_nm), SHA2('shxdb@123',256)) AS CHAR), a.business_nm) AS business_nm,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.ceo), SHA2('shxdb@123',256)) AS CHAR), a.ceo) AS ceo,
 										a.ceo_birth,
-										a.corp_regist_num,
-										a.corp_regist_num2,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.corp_regist_num), SHA2('shxdb@123',256)) USING UTF8), a.corp_regist_num) AS corp_regist_num,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.corp_regist_num2), SHA2('shxdb@123',256)) USING UTF8), a.corp_regist_num2) AS corp_regist_num2,
 										a.corp_type,
 										a.business_cond,
 										a.industry_type,
-										a.tel,
-										a.fax,
-										a.phone_num,
-										a.email,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.tel), SHA2('shxdb@123',256)) USING UTF8), a.tel) AS tel,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.fax), SHA2('shxdb@123',256)) USING UTF8), a.fax) AS fax,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.phone_num), SHA2('shxdb@123',256)) USING UTF8), a.phone_num) AS phone_num,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.email), SHA2('shxdb@123',256)) USING UTF8), a.email) AS email,
 										a.contract_date,
 										a.bank_code,
-										a.account_num,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.account_num), SHA2('shxdb@123',256)) USING UTF8), a.account_num) AS account_num,
 										a.state,
 										a.hompage,
 										a.zip_code,
 										a.address,
 										a.detail_address,
 										a.terminal_id,
-										a.person_nm1,
-										a.person_phone1,
-										a.person_email1,
-										a.person_nm2,
-										a.person_phone2,
-										a.person_email2,
-										a.person_nm3,
-										a.person_phone3,
-										a.person_email3,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm1), SHA2('shxdb@123',256)) AS CHAR), a.person_nm1) AS person_nm1,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone1), SHA2('shxdb@123',256)) USING UTF8), a.person_phone1) AS person_phone1,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email1), SHA2('shxdb@123',256)) USING UTF8), a.person_email1) AS person_email1,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm2), SHA2('shxdb@123',256)) AS CHAR), a.person_nm2) AS person_nm2,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone2), SHA2('shxdb@123',256)) USING UTF8), a.person_phone2) AS person_phone2,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email2), SHA2('shxdb@123',256)) USING UTF8), a.person_email2) AS person_email2,
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm3), SHA2('shxdb@123',256)) AS CHAR), a.person_nm3) AS person_nm3,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone3), SHA2('shxdb@123',256)) USING UTF8), a.person_phone3) AS person_phone3,
+										IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email3), SHA2('shxdb@123',256)) USING UTF8), a.person_email3) AS person_email3,
 										a.commission,
+										a.itg_limitset,
+										(
+											select 
+												sum(a.amount) 
+											from tb_card_auth a
+											inner join tb_store b
+												on a.cpid = b.cpid
+											inner join tb_store_role c
+												on b.store_id = c.store_id
+												and c.role_id='1004'
+											inner join tb_store d
+												on b.high_store_id =d.store_id
+											inner join tb_store_role e
+												on d.store_id = e.store_id 	
+												and e.role_id = '1003'
+											where e.store_id = a.store_id
+										) as amount1,
+										(
+											select 
+												sum(a.amount) 
+											from tb_card_auth2 a
+											inner join tb_store b
+												on a.cpid = b.cpid
+											inner join tb_store_role c
+												on b.store_id = c.store_id
+												and c.role_id='1004'
+											inner join tb_store d
+												on b.high_store_id =d.store_id
+											inner join tb_store_role e
+												on d.store_id = e.store_id 	
+												and e.role_id = '1003'
+											where e.store_id = a.store_id
+										) as amount2,
+										(
+											select 
+												sum(a.amount) 
+											from tb_pay_notice a
+											inner join tb_store b
+												on a.cpid = b.cpid
+											inner join tb_store_role c
+												on b.store_id = c.store_id
+												and c.role_id='1004'
+											inner join tb_store d
+												on b.high_store_id =d.store_id
+											inner join tb_store_role e
+												on d.store_id = e.store_id 	
+												and e.role_id = '1003'
+											where e.store_id = a.store_id
+										) as amount3,
+										(
+											select 
+												sum(a.amount) 
+											from tb_card_cancel a
+											inner join tb_store b
+												on a.cpid = b.cpid
+											inner join tb_store_role c
+												on b.store_id = c.store_id
+												and c.role_id='1004'
+											inner join tb_store d
+												on b.high_store_id =d.store_id
+											inner join tb_store_role e
+												on d.store_id = e.store_id 	
+												and e.role_id = '1003'
+											where e.store_id = a.store_id
+										) as cancel_amount,
 										a.period,
-										a.tax,											
+										a.tax,		
+										a.deposit,										
 										a.created_id,   
 										date_format(a.created_datetime, '%Y.%m.%d') created_datetime,    
 										a.updated_id,   
-										a.updated_datetime    
+										a.updated_datetime
 								   from tb_store a
 								  inner join tb_store_role b
 									 on a.store_id = b.store_id
@@ -597,13 +816,19 @@
 		                         (
 								 select a.store_id,
 										a.high_store_id,
-										a.business_nm 
+										IFNULL(CAST(AES_DECRYPT(UNHEX(a.business_nm), SHA2('shxdb@123',256)) AS CHAR), a.business_nm) AS business_nm
 								   from tb_store a
 								  inner join tb_store_role b
 									 on a.store_id = b.store_id
 									and b.role_id = '1002'                            
 		                         )c
-							  on a.high_store_id = c.store_id              
+							  on a.high_store_id = c.store_id     
+							  left join tb_store_commission d  
+							  	on d.store_id = a.store_id and d.active = 1 
+							<if test="order_no == null and order_no == ''">
+						  	order by created_datetime asc
+						  	</if>
+						  	<if test="order_no != null and order_no != ''">      
 						   order by case when #{order_no} = '1' then (	
 										case #{order_id} when 'store_id' then a.store_id 
 													    when 'business_nm' then a.business_nm 
@@ -633,10 +858,12 @@
                                                               when 'state' then a.state
                                                               when 'tax' then a.tax
 												    end 
-										)END DESC	                  
+										)END DESC
+							</if>	                  
 		                  )a
 		            where (SELECT @ROWNUM:=0)=0      
-		          )a   	
+		          )a  
+		          order by a.rownum desc 	
 		    LIMIT #{recordCountPerPage} OFFSET #{firstIndex}	          
 	</select>
 	
@@ -843,56 +1070,69 @@
 	</select>
 		
 	<select id="selectManageInfo" parameterType="ManageVO" resultMap="manage">
-	 select a.store_id,
+	 select a.no,
+	        a.store_id,
 			a.high_store_id,
 			a.passwd,
-			a.business_nm,
-			(select business_nm high_business_nm from tb_store where store_id = a.high_store_id) high_business_nm, 
-			a.ceo,
+			IFNULL(CAST(AES_DECRYPT(UNHEX(a.business_nm), SHA2('shxdb@123',256)) AS CHAR), a.business_nm) AS business_nm,
+			(select IFNULL(CAST(AES_DECRYPT(UNHEX(a.business_nm), SHA2('shxdb@123',256)) AS CHAR), a.business_nm) high_business_nm from tb_store where store_id = a.high_store_id) high_business_nm, 
+			IFNULL(CAST(AES_DECRYPT(UNHEX(a.ceo), SHA2('shxdb@123',256)) AS CHAR), a.ceo) AS ceo,
 			a.ceo_birth,
-			a.corp_regist_num,
-			a.corp_regist_num2,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.corp_regist_num), SHA2('shxdb@123',256)) USING UTF8), a.corp_regist_num) AS corp_regist_num,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.corp_regist_num2), SHA2('shxdb@123',256)) USING UTF8), a.corp_regist_num2) AS corp_regist_num2,
 			a.corp_type,
 			a.business_cond,
 			a.industry_type,
-			a.tel,
-			a.fax,
-			a.phone_num,
-			a.email,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.tel), SHA2('shxdb@123',256)) USING UTF8), a.tel) AS tel,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.fax), SHA2('shxdb@123',256)) USING UTF8), a.fax) AS fax,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.phone_num), SHA2('shxdb@123',256)) USING UTF8), a.phone_num) AS phone_num,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.email), SHA2('shxdb@123',256)) USING UTF8), a.email) AS email,
 			a.contract_date,
 			a.bank_code,
 			b.bank_nm,
-			a.account_num,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.account_num), SHA2('shxdb@123',256)) USING UTF8), a.account_num) AS account_num,
+			IFNULL(CAST(AES_DECRYPT(UNHEX(a.accounter), SHA2('shxdb@123',256)) AS CHAR), a.accounter) AS accounter,
 			a.state,
 			a.hompage,
 			a.zip_code,
 			a.address,
 			a.detail_address,
 			a.terminal_id,
-			a.person_nm1,
-			a.person_phone1,
-			a.person_email1,
-			a.person_nm2,
-			a.person_phone2,
-			a.person_email2,
-			a.person_nm3,
-			a.person_phone3,
-			a.person_email3,
+			IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm1), SHA2('shxdb@123',256)) AS CHAR), a.person_nm1) AS person_nm1,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone1), SHA2('shxdb@123',256)) USING UTF8), a.person_phone1) AS person_phone1,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email1), SHA2('shxdb@123',256)) USING UTF8), a.person_email1) AS person_email1,
+			IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm2), SHA2('shxdb@123',256)) AS CHAR), a.person_nm2) AS person_nm2,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone2), SHA2('shxdb@123',256)) USING UTF8), a.person_phone2) AS person_phone2,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email2), SHA2('shxdb@123',256)) USING UTF8), a.person_email2) AS person_email2,
+			IFNULL(CAST(AES_DECRYPT(UNHEX(a.person_nm3), SHA2('shxdb@123',256)) AS CHAR), a.person_nm3) AS person_nm3,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_phone3), SHA2('shxdb@123',256)) USING UTF8), a.person_phone3) AS person_phone3,
+			IFNULL(CONVERT(AES_DECRYPT(UNHEX(a.person_email3), SHA2('shxdb@123',256)) USING UTF8), a.person_email3) AS person_email3,
 			a.tax,
 			a.commission,
 			a.period,
+			a.deposit,
+			a.itg_limitset,
 			a.settlement_type,
+			a.file_no,
 			a.created_id,   
 			a.created_datetime,    
 			a.updated_id,   
-			a.updated_datetime    
+			a.updated_datetime,
+			a.credit_card_k,
+			a.credit_card,
+			a.terminal,
+			a.account_transfer,
+			a.virtual_account,
+			a.gift_voucher,
+			a.smart_gift_voucher,
+			a.book_gift_voucher
 	   from tb_store a 
 	   left join tb_bank b
 	     on a.bank_code = b.bank_code
 	  where a.store_id = #{store_id}
 	</select>
 		
-	<insert id="manageAdd" parameterType="ManageVO">
+	<insert id="manageAdd" parameterType="ManageVO" useGeneratedKeys="true" keyProperty="no">
 	   insert into tb_store
 			       (
 			        store_id,
@@ -913,6 +1153,7 @@
 					contract_date,
 					bank_code,
 					account_num,
+					accounter,
 					state,
 					hompage,
 					zip_code,
@@ -932,7 +1173,19 @@
 					person_email3,
 					tax,
 					commission,
+					credit_card_k,
+					credit_card,
+					<if test="terminal != null and terminal != ''">
+					terminal,
+					</if>
+					account_transfer,
+					virtual_account,
+					gift_voucher,
+					smart_gift_voucher,
+					book_gift_voucher,
 					period,
+					deposit,
+					itg_limitset,
 					<if test="settlement_type != null and settlement_type != ''">
 					settlement_type,
 					</if>						
@@ -943,22 +1196,23 @@
 		           (
 			        #{store_id},
 					#{high_store_id},
-					#{passwd},
-					#{business_nm},
-					#{ceo},
+					SHA2(#{passwd},256),
+					HEX(AES_ENCRYPT(#{business_nm}, SHA2('shxdb@123', 256))),
+					HEX(AES_ENCRYPT(#{ceo}, SHA2('shxdb@123', 256))),
 					#{ceo_birth},
-					#{corp_regist_num},
-					#{corp_regist_num2},
+					HEX(AES_ENCRYPT(#{corp_regist_num}, SHA2('shxdb@123', 256))),
+					HEX(AES_ENCRYPT(#{corp_regist_num2}, SHA2('shxdb@123', 256))),
 					#{corp_type},
 					#{business_cond},
 					#{industry_type},
-					#{tel},
-					#{fax},
-					#{phone_num},
-					#{email},
+					HEX(AES_ENCRYPT(#{tel}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{fax}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{phone_num}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{email}, SHA2('shxdb@123', 256))),
 					#{contract_date},
 					#{bank_code},
-					#{account_num},
+					HEX(AES_ENCRYPT(#{account_num}, SHA2('shxdb@123', 256))),
+					HEX(AES_ENCRYPT(#{accounter}, SHA2('shxdb@123', 256))),
 					#{state},
 					#{hompage},
 					#{zip_code},
@@ -967,18 +1221,30 @@
 					<if test="terminal_id != null and terminal_id != ''">
 					#{terminal_id},
 					</if>
-					#{person_nm1},
-					#{person_phone1},
-					#{person_email1},
-					#{person_nm2},
-					#{person_phone2},
-					#{person_email2},
-					#{person_nm3},
-					#{person_phone3},
-					#{person_email3},
+					HEX(AES_ENCRYPT(#{person_nm1}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{person_phone1}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{person_email1}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{person_nm2}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{person_phone2}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{person_email2}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{person_nm3}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{person_phone3}, SHA2('shxdb@123', 256))),
+	          		HEX(AES_ENCRYPT(#{person_email3}, SHA2('shxdb@123', 256))),
 					#{tax},
 					#{commission},
+					CAST(#{credit_card_k} AS DECIMAL(4,1)),
+					CAST(#{credit_card} AS DECIMAL(4,1)),
+					<if test="terminal != null and terminal != ''">
+					CAST(#{terminal} AS DECIMAL(4,1)),
+					</if>
+					CAST(#{account_transfer} AS DECIMAL(4,1)),
+					CAST(#{virtual_account} AS DECIMAL(4,1)),
+					CAST(#{gift_voucher} AS DECIMAL(4,1)),
+					CAST(#{smart_gift_voucher} AS DECIMAL(4,1)),
+					CAST(#{book_gift_voucher} AS DECIMAL(4,1)),
 					#{period},
+					#{deposit},
+					#{itg_limitset},
 					<if test="settlement_type != null and settlement_type != ''">
 					#{settlement_type},
 					</if>					
@@ -1007,25 +1273,25 @@
 	          high_store_id = #{high_store_id},
 	          </if>
 	          <if test="business_nm != null and business_nm != ''">
-	          business_nm = #{business_nm},
+	          business_nm = HEX(AES_ENCRYPT(#{business_nm}, SHA2('shxdb@123', 256))),
 	          </if>
-	          ceo = #{ceo},
+	          ceo = HEX(AES_ENCRYPT(#{ceo}, SHA2('shxdb@123', 256))),
 	          ceo_birth = #{ceo_birth},
 	          <if test="corp_regist_num != null and corp_regist_num != ''">
-	          corp_regist_num = #{corp_regist_num},
+	          corp_regist_num = HEX(AES_ENCRYPT(#{corp_regist_num}, SHA2('shxdb@123', 256))),
 	          </if>
 	          <if test="corp_regist_num2 != null and corp_regist_num2 != ''">
-	          corp_regist_num2 = #{corp_regist_num2},
+	          corp_regist_num2 = HEX(AES_ENCRYPT(#{corp_regist_num2}, SHA2('shxdb@123', 256))),
 	          </if>
 	          <if test="corp_type != null and corp_type != ''">
 	          corp_type = #{corp_type},
 	          </if>
 	          business_cond = #{business_cond},
 	          industry_type = #{industry_type},
-	          tel = #{tel},
-	          fax = #{fax},
-	          phone_num = #{phone_num},
-	          email = #{email},
+	          tel = HEX(AES_ENCRYPT(#{tel}, SHA2('shxdb@123', 256))),
+	          fax = HEX(AES_ENCRYPT(#{fax}, SHA2('shxdb@123', 256))),
+	          phone_num = HEX(AES_ENCRYPT(#{phone_num}, SHA2('shxdb@123', 256))),
+	          email = HEX(AES_ENCRYPT(#{email}, SHA2('shxdb@123', 256))),
 	          <if test="contract_date != null and contract_date != ''">
 	          contract_date = #{contract_date},
 	          </if>
@@ -1033,7 +1299,10 @@
 	          bank_code = #{bank_code},
 	          </if>
 	          <if test="account_num != null and account_num != ''">
-	          account_num = #{account_num},
+	          account_num = HEX(AES_ENCRYPT(#{account_num}, SHA2('shxdb@123', 256))),
+	          </if>
+	          <if test="accounter != null and accounter != ''">
+	          accounter = HEX(AES_ENCRYPT(#{accounter}, SHA2('shxdb@123', 256))),
 	          </if>
 	          <if test="state != null and state != ''">
 	          state = #{state},
@@ -1051,27 +1320,53 @@
 	          <if test="terminal_id != null and terminal_id != ''">
 	          terminal_id = #{terminal_id},
 	          </if>
-	          person_nm1 = #{person_nm1},
-	          person_phone1 = #{person_phone1},
-	          person_email1 = #{person_email1},
-	          person_nm2 = #{person_nm2},
-	          person_phone2 = #{person_phone2},
-	          person_email2 = #{person_email2},
-	          person_nm3 = #{person_nm3},
-	          person_phone3 = #{person_phone3},
-	          person_email3 = #{person_email3},
+	          person_nm1 = HEX(AES_ENCRYPT(#{person_nm1}, SHA2('shxdb@123', 256))),
+	          person_phone1 = HEX(AES_ENCRYPT(#{person_phone1}, SHA2('shxdb@123', 256))),
+	          person_email1 = HEX(AES_ENCRYPT(#{person_email1}, SHA2('shxdb@123', 256))),
+	          person_nm2 = HEX(AES_ENCRYPT(#{person_nm2}, SHA2('shxdb@123', 256))),
+	          person_phone2 = HEX(AES_ENCRYPT(#{person_phone2}, SHA2('shxdb@123', 256))),
+	          person_email2 = HEX(AES_ENCRYPT(#{person_email2}, SHA2('shxdb@123', 256))),
+	          person_nm3 = HEX(AES_ENCRYPT(#{person_nm3}, SHA2('shxdb@123', 256))),
+	          person_phone3 = HEX(AES_ENCRYPT(#{person_phone3}, SHA2('shxdb@123', 256))),
+	          person_email3 = HEX(AES_ENCRYPT(#{person_email3}, SHA2('shxdb@123', 256))),
 	          <if test="tax != null and tax != ''">
 	          tax = #{tax},
 	          </if>
 	          <if test="commission != null and commission != ''">
 	          commission = #{commission},
 	          </if>
+	          <if test="credit_card_k != null and credit_card_k != ''">
+	          credit_card_k = #{credit_card_k},
+	          </if>
+	          <if test="credit_card != null and credit_card != ''">
+	          credit_card = #{credit_card},
+	          </if>
+	          <if test="terminal != null and terminal != ''">
+	          terminal = CAST(#{terminal} AS DECIMAL(4,1)),
+	          </if>
+	          <if test="account_transfer != null and account_transfer != ''">
+	          account_transfer = #{account_transfer},
+	          </if>
+	          <if test="virtual_account != null and virtual_account != ''">
+	          virtual_account = #{virtual_account},
+	          </if>
+	          <if test="gift_voucher != null and gift_voucher != ''">
+	          gift_voucher = #{gift_voucher},
+	          </if>
+	          <if test="smart_gift_voucher != null and smart_gift_voucher != ''">
+	          smart_gift_voucher = #{smart_gift_voucher},
+	          </if>
+	          <if test="book_gift_voucher != null and book_gift_voucher != ''">
+	          book_gift_voucher = #{book_gift_voucher},
+	          </if>
 	          period = #{period},
+			  deposit = #{deposit},
+			  itg_limitset = #{itg_limitset},	          
 	          <if test="settlement_type != null and settlement_type != ''">
 	          settlement_type = #{settlement_type},
 	          </if>
 	          <if test="passwd != null and passwd != ''">
-	          passwd = #{passwd},
+	          passwd = SHA2(#{passwd},256),
 	          </if>
 	          updated_id = #{updated_id},
 	          updated_datetime = now()
@@ -1098,9 +1393,48 @@
 	    where store_id = #{store_id}
 	</delete>
 	
-	<delete id="manageInquiryeDel" parameterType="ManageVO">
+	<delete id="manageInquiryeDel" parameterType="ManageVO"> 
 	   delete from tb_inquiry
 	    where store_id = #{store_id}
 	</delete>
+	
+	<update id="manageCommissionActiveMod" parameterType="ManageVO">
+	   update tb_store_commission 
+	   set active = 0
+	   where store_id = #{store_id}	
+	</update>
+	
+	<insert id="manageCommissionAdd" parameterType="ManageVO">
+	   insert into tb_store_commission
+		(
+			store_id,
+			credit_card_k,
+			credit_card,
+			<if test="terminal != null and terminal != ''">
+			terminal,
+			</if>
+			account_transfer,
+			virtual_account,
+			gift_voucher,
+			smart_gift_voucher,
+			book_gift_voucher,
+			created_id,
+			created_datetime
+		) values (
+			#{store_id},
+			#{credit_card_k},
+			#{credit_card},
+			<if test="terminal != null and terminal != ''">
+			CAST(#{terminal} AS DECIMAL(4,1)),
+			</if>
+			#{account_transfer},
+			#{virtual_account},
+			#{gift_voucher},
+			#{smart_gift_voucher},
+			#{book_gift_voucher},
+			#{created_id},   
+			now()
+		)
+	</insert>
 	
 </mapper>
