@@ -1,0 +1,604 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.example.cmmn.service.impl.SchedulerMapper">
+		
+	<select id="registAndIssueTaxInvoiceList" parameterType="Map" resultType="java.util.HashMap">
+	<![CDATA[
+         select a.store_id,
+			    a.terminal_id,
+                a.commission,
+                a.period,
+                concat(a.start_date, '-', a.end_date) as start_end_date,
+                a.start_date,
+                a.end_date,
+                a.corp_regist_num,
+                a.business_nm,
+                a.ceo,
+			    a.industry_type,
+			    a.business_cond,
+			    a.person_nm2,
+			    a.tel, 
+			    a.person_phone2,                    
+                a.person_email2,
+                a.addr,
+                a.role_id,
+				a.amount_total,
+				a.amount_value,
+                a.amount_tax,
+                date_format(now(), '%Y%m%d') to_date               
+		   from (
+				select a.store_id,
+                       max(a.terminal_id) terminal_id,
+					   max(a.commission) commission,
+                       max(a.period) period,
+                       date_format(max(a.start_date), '%Y.%m.%d') start_date,
+                       date_format(max(a.end_date), '%Y.%m.%d') end_date,                       
+                       max(a.corp_regist_num) corp_regist_num,
+                       max(a.business_nm) business_nm,
+                       max(a.ceo) ceo,       
+					   max(a.industry_type) industry_type,
+					   max(a.business_cond) business_cond,
+					   max(a.person_nm2) person_nm2,
+					   max(a.tel) tel, 
+					   max(a.person_phone2) person_phone2,                       
+                       max(a.person_email2) person_email2,
+                       max(a.addr) addr,
+                       max(a.role_id) role_id,
+					   sum(ifnull(b.amount, 0) + ifnull(c.amount, 0)) * ifnull(a.commission, 1) / 100 amount_total,
+					   round((sum(ifnull(b.amount, 0) + ifnull(c.amount, 0)) * ifnull(a.commission, 1) / 100) / 1.1 ) amount_value,
+                       round((sum(ifnull(b.amount, 0) + ifnull(c.amount, 0)) * ifnull(a.commission, 1) / 100) / 1.1 * 0.1) amount_tax
+				  from (
+						select a.store_id,
+							   a.terminal_id,
+							   a.commission,
+							   a.period,
+							   date_format((concat(#{ymd}, lpad(a.period, 2, 0)) - INTERVAL 1 MONTH), '%Y%m%d') start_date,
+							   date_format((concat(#{ymd}, lpad(a.period, 2, 0)) - INTERVAL 1 day), '%Y%m%d') end_date,
+                               replace(a.corp_regist_num, '-', '') corp_regist_num,
+                               a.business_nm,
+                               a.ceo,
+							   a.industry_type,
+							   a.business_cond,
+							   a.person_nm2,
+							   a.person_phone2, 
+							   a.person_email2,
+							   a.tel, 
+							   concat(a.address,' ', a.detail_address) addr,						   
+                               b.role_id
+						  from tb_store a
+						 inner join tb_store_role b
+							on a.store_id = b.store_id
+						   and b.role_id = '1004'
+                           and a.tax = 'Y'
+                           and a.state = 'Y'
+                           and a.period = #{period}
+                        )a   
+				   left join 
+						(
+						select a.userid,
+							   a.authdate,
+							   a.daoutrx,
+							   a.cpid,
+							   a.amount
+						  from (
+								select userid,
+									   authdate,
+									   daoutrx,
+									   cpid,
+									   amount
+								  from tb_card_auth
+								 where resultcode = '0000'
+								 union all
+								select userid,
+									   authdate,
+									   daoutrx,
+									   cpid,
+									   amount
+								  from tb_card_auth2
+								 where resultcode = '0000'
+							   )a
+						  left join tb_card_cancel b
+							on b.daoutrx = a.daoutrx
+						   and b.cpid = a.cpid
+						  left join tb_pay_hold c
+						    on c.daoutrx = a.daoutrx
+						   and c.cpid = a.cpid                        
+						 where 1 = 1
+						   and b.daoutrx is null
+						   and c.daoutrx is null                          
+                       )b   
+				    on a.store_id = b.userid
+				   and b.authdate >= a.start_date
+				   and b.authdate <= a.end_date                    
+                  left join 
+					   (			
+						select a.terminalid,
+							   a.settdate authdate,
+							   a.daoutrx,
+							   a.cpid,
+							   a.amount
+						  from tb_pay_notice a
+						  left join tb_card_cancel b
+							on b.daoutrx = a.daoutrx
+						   and b.cpid = a.cpid
+						  left join tb_pay_hold c
+							on c.daoutrx = a.daoutrx
+						   and c.cpid = a.cpid                        
+						 where 1 = 1
+						   and b.daoutrx is null
+						   and c.daoutrx is null 
+						)c
+				     on a.terminal_id = c.terminalid
+				    and c.authdate >= a.start_date
+				    and c.authdate <= a.end_date  
+		          group by a.store_id
+				)a
+		  where a.amount_total != '0'
+		  order by a.role_id
+	]]>	  
+	</select>
+	
+	<select id="adminStoreId" parameterType="Map" resultType="java.util.HashMap">
+	<![CDATA[
+	 	 select a.store_id,
+			    a.terminal_id,
+			    a.commission,
+			    a.period,
+			    replace(a.corp_regist_num, '-', '') corp_regist_num,
+			    a.business_nm,
+			    a.ceo,
+			    a.industry_type,
+			    a.business_cond,
+			    a.person_nm2,
+			    a.tel, 
+			    a.phone_num,                    
+			    a.email,
+				a.zip_code, 
+				concat(a.address,' ', a.detail_address) addr,
+		 	    b.role_id
+		   from tb_store a
+		  inner join tb_store_role b
+	 		 on a.store_id = b.store_id
+		    and b.role_id = '1001'
+            and a.store_id = #{store_id}
+            and a.state = 'Y'
+	]]>	  
+	</select>
+	
+	<insert id="taxResultAdd" parameterType="Map">
+	   insert into tb_tax_result
+			       (
+			        mgtnum,
+			        corp_regist_num,
+			        created_datetime,
+			        start_datetime,
+			        end_datetime,
+			        result
+			       )
+		           values
+		           (
+			        #{mgtnum},
+			        #{corp_regist_num},
+			        now(),
+			        #{start_datetime},
+			        #{end_datetime},
+			        #{result}
+		           )	    	
+	</insert>		
+	
+	<update id="taxStateMod1" parameterType="Map">
+	<![CDATA[
+		UPDATE tb_card_auth 
+		   SET tax_state = #{result}
+		 WHERE no in (
+				select b.num
+				  from (
+						select a.store_id,
+							   date_format((concat(#{ymd}, lpad(a.period, 2, 0)) - INTERVAL 1 MONTH), '%Y%m%d') start_date,
+							   date_format((concat(#{ymd}, lpad(a.period, 2, 0)) - INTERVAL 1 day), '%Y%m%d') end_date
+						  from tb_store a
+						 inner join tb_store_role b
+							on a.store_id = b.store_id
+						   and b.role_id = '1004'
+                           and a.tax = 'Y'
+                           and a.state = 'Y'
+                           and a.period = #{period}
+                        )a   
+				  inner join 
+						(
+						select a.num,
+							   a.userid,
+							   a.authdate
+						  from (
+								select no as num,
+                                       userid,
+									   authdate,
+									   daoutrx,
+									   cpid
+								  from tb_card_auth
+								 where resultcode = '0000'
+							   )a
+						  left join tb_card_cancel b
+							on b.daoutrx = a.daoutrx
+						   and b.cpid = a.cpid
+						  left join tb_pay_hold c
+						    on c.daoutrx = a.daoutrx
+						   and c.cpid = a.cpid                        
+						 where 1 = 1
+						   and b.daoutrx is null
+						   and c.daoutrx is null                          
+                       )b   
+				    on a.store_id = b.userid
+				   and b.authdate >= a.start_date
+				   and b.authdate <= a.end_date  
+				   and a.store_id = #{store_id}
+		 ) 
+	]]>	  		 
+    </update> 	
+    
+	<update id="taxStateMod2" parameterType="Map"> 
+	<![CDATA[
+		UPDATE tb_card_auth2 
+		   SET tax_state = #{result}
+		 WHERE no in (
+				select b.num
+				  from (
+						select a.store_id,
+							   date_format((concat(#{ymd}, lpad(a.period, 2, 0)) - INTERVAL 1 MONTH), '%Y%m%d') start_date,
+							   date_format((concat(#{ymd}, lpad(a.period, 2, 0)) - INTERVAL 1 day), '%Y%m%d') end_date
+						  from tb_store a
+						 inner join tb_store_role b
+							on a.store_id = b.store_id
+						   and b.role_id = '1004'
+                           and a.tax = 'Y'
+                           and a.state = 'Y'
+                           and a.period = #{period}
+                        )a   
+				  inner join 
+						(
+						select a.num,
+							   a.userid,
+							   a.authdate
+						  from (
+								select no as num,
+                                       userid,
+									   authdate,
+									   daoutrx,
+									   cpid
+								  from tb_card_auth2
+								 where resultcode = '0000'
+							   )a
+						  left join tb_card_cancel b
+							on b.daoutrx = a.daoutrx
+						   and b.cpid = a.cpid
+						  left join tb_pay_hold c
+						    on c.daoutrx = a.daoutrx
+						   and c.cpid = a.cpid                        
+						 where 1 = 1
+						   and b.daoutrx is null
+						   and c.daoutrx is null                          
+                       )b   
+				    on a.store_id = b.userid
+				   and b.authdate >= a.start_date
+				   and b.authdate <= a.end_date   
+				   and a.store_id = #{store_id} 
+		 )
+	]]>	  	 
+    </update> 	
+    
+	<update id="taxStateMod3" parameterType="Map"> 
+	<![CDATA[
+		UPDATE tb_pay_notice 
+		   SET tax_state = #{result}
+		 WHERE no in (
+				select c.num
+				  from (
+						select a.terminal_id,
+							   date_format((concat(#{ymd}, lpad(a.period, 2, 0)) - INTERVAL 1 MONTH), '%Y%m%d') start_date,
+							   date_format((concat(#{ymd}, lpad(a.period, 2, 0)) - INTERVAL 1 day), '%Y%m%d') end_date
+						  from tb_store a
+						 inner join tb_store_role b
+							on a.store_id = b.store_id
+						   and b.role_id = '1004'
+                           and a.tax = 'Y'
+                           and a.state = 'Y'
+                           and a.period = #{period}
+                        )a              
+                 inner join 
+					   (			
+						select a.no as num,
+							   a.terminalid,
+							   a.settdate authdate,
+							   a.daoutrx,
+							   a.cpid 
+						  from tb_pay_notice a
+						  left join tb_card_cancel b
+							on b.daoutrx = a.daoutrx
+						   and b.cpid = a.cpid
+						  left join tb_pay_hold c
+							on c.daoutrx = a.daoutrx
+						   and c.cpid = a.cpid                        
+						 where 1 = 1
+						   and b.daoutrx is null
+						   and c.daoutrx is null 
+						)c
+				     on a.terminal_id = c.terminalid
+				    and c.authdate >= a.start_date
+				    and c.authdate <= a.end_date  		
+				    and a.terminal_id = #{terminal_id} 
+		 )
+	]]>	  	 
+    </update> 	
+	
+	<select id="auth2PgsbmList" parameterType="Map" resultType="java.util.HashMap">
+	<![CDATA[
+	 select concat(
+				   a.recode_type, ',',
+				   a.add_type, ',',
+				   a.corp_regist_num_pg, ',',
+				   a.corp_regist_num, ',',
+				   a.industry_type, ',',
+				   a.business_nm, ',',
+				   a.hompage, ',',
+				   a.address, ',',
+				   a.ceo, ',',
+				   a.tel, ',',
+				   a.email, ',',
+				   a.etc, ','   
+                  ) datas
+	   from (
+			select 'D' recode_type,
+				   a.add_type,
+				   (
+				   select replace(a.corp_regist_num, '-', '') corp_regist_num_pg 
+					 from tb_store a
+					inner join tb_store_role b
+					   on a.store_id = b.store_id
+					  and b.role_id = '1001'
+					 left join (
+						  select distinct store_id 
+							from tb_adm_menu_mapping
+						  )c
+					   on c.store_id = a.store_id
+					where c.store_id is null
+					  and a.state = 'Y'            
+				   ) corp_regist_num_pg,
+				   a.corp_regist_num, 
+				   a.industry_type,
+				   a.business_nm,
+				   a.hompage,
+				   a.address,
+				   a.ceo,
+				   a.tel,
+				   a.email,
+				   a.etc           
+			  from (     
+				   select '00' add_type,
+						  replace(a.corp_regist_num, '-', '') corp_regist_num,
+						  a.industry_type,
+						  a.business_nm,
+						  replace(replace(a.hompage, 'https://', ''), 'http://', '') hompage,
+						  concat(a.address,' ',a.detail_address) address,
+						  a.ceo,
+						  replace(a.tel, '-', '') tel,
+						  a.email,
+						  ' ' etc
+					 from tb_store a
+					inner join tb_store_role b
+					   on a.store_id = b.store_id
+					  and b.role_id = '1004' 
+					  and date_format(a.created_datetime, '%Y%m%d') = date_format((now() - INTERVAL 1 day), '%Y%m%d')
+					  and state = 'Y'
+					union all
+				   select '01' add_type,
+						  replace(a.corp_regist_num, '-', '') corp_regist_num,
+						  a.industry_type,
+						  a.business_nm,
+						  replace(replace(a.hompage, 'https://', ''), 'http://', '') hompage,
+						  concat(a.address,' ',a.detail_address) address,
+						  a.ceo,
+						  replace(a.tel, '-', '') tel,
+						  a.email,
+						  ' ' etc
+					 from tb_store a
+					inner join tb_store_role b
+					   on a.store_id = b.store_id
+					  and b.role_id = '1004' 
+					  and date_format(a.state_datetime, '%Y%m%d') = date_format((now() - INTERVAL 1 day), '%Y%m%d')
+					  and state = 'N'
+					union all
+				   select '02' add_type,
+						  replace(a.corp_regist_num, '-', '') corp_regist_num,
+						  a.industry_type,
+						  a.business_nm,
+						  replace(replace(a.hompage, 'https://', ''), 'http://', '') hompage,
+						  concat(a.address,' ',a.detail_address) address,
+						  a.ceo,
+						  replace(a.tel, '-', '') tel,
+						  a.email,
+						  ' ' etc
+					 from tb_store a
+					inner join tb_store_role b
+					   on a.store_id = b.store_id
+					  and b.role_id = '1004' 
+					  and date_format(a.updated_datetime, '%Y%m%d') = date_format((now() - INTERVAL 1 day), '%Y%m%d')
+					  and state = 'Y'
+					)a
+			  )a
+	]]>	  
+	</select>
+		
+	<select id="auth2TypeDList" parameterType="Map" resultType="int">
+	<![CDATA[
+	 select count(*) cnt
+	   from (
+			select date_format((created_datetime + INTERVAL 7 day), '%Y%m%d') dates
+			  from tb_card_auth2_tg
+			 where 1 = 1
+			   and recode_type = 'D'
+			   and file_type = #{file_type}
+			   and result = '1'
+			 )a
+	   where 1 = 1
+	     and a.dates = #{ymd}
+	]]>	  
+	</select>
+			
+	<select id="auth2PgtmsList" parameterType="Map" resultType="java.util.HashMap">
+	<![CDATA[
+  select concat(
+			   a.recode_type, ',',
+			   a.system_type, ',',
+			   a.cpid, ',',
+			   a.canceltype, ',',
+			   a.authdate, ',',
+			   a.corp_regist_num_pg, ',',
+			   a.corp_regist_num, ',',
+			   a.daoutrx, ',',
+			   a.no, ',',
+			   a.commission_total, ',',
+			   a.amount, ',',
+			   a.orderno, ',',
+			   a.etc, ','
+		  ) datas
+	from (
+	 	 select 'D' recode_type,
+                'PG' system_type,
+                a.cpid,
+                a.canceltype,
+                a.authdate, 
+			    (
+			   select replace(a.corp_regist_num, '-', '') corp_regist_num_pg 
+				 from tb_store a
+				inner join tb_store_role b
+				   on a.store_id = b.store_id
+				  and b.role_id = '1001'
+				 left join (
+					  select distinct store_id 
+						from tb_adm_menu_mapping
+					  )c
+				   on c.store_id = a.store_id
+				where c.store_id is null
+				  and a.state = 'Y'            
+			    ) corp_regist_num_pg,                
+                a.corp_regist_num,
+                a.daoutrx,
+                a.no,
+                a.commission_total,
+                a.amount,
+                a.orderno,
+                ' ' etc
+		   from (	
+				select a.cpid,
+					   '0' canceltype, 
+					   date_format(a.authdate, '%Y%m%d') authdate,                   
+                       b.corp_regist_num,
+					   a.daoutrx,
+                       '0' no, 
+					   case when b.tax = 'Y' then a.amount * b.commission / 100
+							when b.tax = 'N' then a.amount * 3.3 / 100     
+					   end commission_total, 
+					   a.amount,
+					   a.orderno
+				  from tb_card_auth2 a
+				 inner join 
+					   (
+						select a.store_id,
+							   replace(a.corp_regist_num, '-','') corp_regist_num,
+							   a.tax,                           
+							   a.commission
+						  from tb_store a
+						 inner join tb_store_role b
+							on a.store_id = b.store_id
+						   and b.role_id = '1004'
+						   and a.state = 'Y'                  
+					   ) b                 
+                    on a.userid = b.store_id
+				 union all
+				select a.cpid,
+					   c.canceltype, 
+					   date_format(c.created_datetime, '%Y%m%d') authdate,                   
+                       b.corp_regist_num,
+					   a.daoutrx,
+                       '0' no, 
+					   case when b.tax = 'Y' then a.amount * b.commission / 100
+							when b.tax = 'N' then a.amount * 3.3 / 100     
+					   end commission_total, 
+					   a.amount,
+					   a.orderno
+				  from tb_card_auth2 a
+				 inner join 
+					   (
+						select a.store_id,
+							   replace(a.corp_regist_num, '-','') corp_regist_num,
+							   a.tax,                           
+							   a.commission
+						  from tb_store a
+						 inner join tb_store_role b
+							on a.store_id = b.store_id
+						   and b.role_id = '1004'
+						   and a.state = 'Y'                  
+					   ) b                 
+                    on a.userid = b.store_id
+				 inner join tb_card_cancel c
+                    on a.cpid = c.cpid
+				   and a.daoutrx = c.daoutrx
+				 where c.canceltype = '1'
+				 union all
+				select a.cpid,
+					   c.canceltype, 
+					   date_format(c.created_datetime, '%Y%m%d') authdate,                   
+                       b.corp_regist_num,
+					   a.daoutrx,
+                       '1' no, 
+					   case when b.tax = 'Y' then a.amount * b.commission / 100
+							when b.tax = 'N' then a.amount * 3.3 / 100     
+					   end commission_total, 
+					   a.amount,
+					   a.orderno
+				  from tb_card_auth2 a
+				 inner join 
+					   (
+						select a.store_id,
+							   replace(a.corp_regist_num, '-','') corp_regist_num,
+							   a.tax,                           
+							   a.commission
+						  from tb_store a
+						 inner join tb_store_role b
+							on a.store_id = b.store_id
+						   and b.role_id = '1004'
+						   and a.state = 'Y'                  
+					   ) b                 
+                    on a.userid = b.store_id
+				 inner join tb_card_cancel c
+                    on a.cpid = c.cpid
+				   and a.daoutrx = c.daoutrx
+				 where c.canceltype = '3'            
+				)a
+	 	  where a.daoutrx is not null
+            and a.authdate = date_format((now() - INTERVAL 1 day), '%Y%m%d')
+          order by a.corp_regist_num, a.daoutrx
+            )a
+	]]>	  
+	</select>
+
+	<insert id="auth2TgAdd" parameterType="Map">
+	   insert into tb_card_auth2_tg
+			       (
+			        recode_type,
+			        server_file,
+			        file_type,
+			        created_datetime,
+			        result
+			       )
+		           values
+		           (
+			        #{recode_type},
+			        #{server_file},
+			        #{file_type},
+			        now(),
+			        #{result}
+		           )	    	
+	</insert>	
+		
+</mapper>
